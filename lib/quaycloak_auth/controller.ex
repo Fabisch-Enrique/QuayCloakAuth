@@ -34,7 +34,7 @@ defmodule QuaycloakAuth.Controller do
             Logger.warning("Keycloak login failed: #{inspect(reason)}")
 
             conn
-            |> put_flash(:error, "Login failed")
+            |> put_flash(:error, "Login Failed")
             |> redirect(to: QuaycloakAuth.routes(conn).login_path)
         end
       end

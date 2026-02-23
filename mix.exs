@@ -7,7 +7,9 @@ defmodule QuaycloakAuth.MixProject do
       version: "0.1.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      description: "Keycloak Auth ++ admin API toolkit for Phoenix (Ueberauth-based v1).",
+      package: package()
     ]
   end
 
@@ -26,6 +28,15 @@ defmodule QuaycloakAuth.MixProject do
       {:phoenix, "~> 1.8.1"},
       {:ueberauth_keycloak_strategy, "~> 0.4.0"},
       {:vc_utils, git: "https://github.com/valuechainfactory/vc_utils.git"}
+    ]
+  end
+
+  defp package do
+    [
+      licenses: ["MIT"],
+      links: %{
+        "GitHub" => "hhttps://github.com/Fabisch-Enrique/QuayCloakAuth"
+      }
     ]
   end
 end
