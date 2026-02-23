@@ -35,7 +35,7 @@ defmodule QuaycloakAuth.MixProject do
     [
       licenses: ["MIT"],
       links: %{
-        "GitHub" => "hhttps://github.com/Fabisch-Enrique/QuayCloakAuth"
+        "GitHub" => "https://github.com/Fabisch-Enrique/QuayCloakAuth"
       }
     ]
   end
