@@ -10,7 +10,7 @@ defmodule QuaycloakAuth.Admin.User do
   def config(),
     do:
       :ueberauth
-      |> Application.get_env(Ueberauth.Strategy.Keycloak.OAuth)
+      |> Application.get_env(QuaycloakAuth)
       |> check_config_keys_exist(:client_id)
       |> check_config_keys_exist(:client_secret)
 
