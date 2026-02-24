@@ -1,4 +1,4 @@
-defmodule Admin.Client do
+defmodule QuaycloakAuth.Admin.Client do
   use VCUtils.HTTPClient
 
   require Logger

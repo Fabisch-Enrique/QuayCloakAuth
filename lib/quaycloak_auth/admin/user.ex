@@ -1,9 +1,9 @@
-defmodule Admin.User do
+defmodule QuaycloakAuth.Admin.User do
   use VCUtils.HTTPClient
 
   require Logger
 
-  alias Admin.Client
+  alias QuaycloakAuth.Admin.Client
 
   @required_actions ["UPDATE_PASSWORD"]
 
