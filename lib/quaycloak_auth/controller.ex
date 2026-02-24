@@ -27,7 +27,7 @@ defmodule QuaycloakAuth.Controller do
         callbacks = QuaycloakAuth.callbacks(conn)
 
         with {:ok, user_info, raw_info} <- QuaycloakAuth.Ueberauth.extract(auth),
-             {:ok, conn} <- callbacks.on_login(conn, user_info, raw_info) do
+             {:ok, conn} <- callbacks.login(conn, user_info, raw_info) do
           redirect(conn, to: QuaycloakAuth.routes(conn).after_login_path)
         else
           {:error, reason} ->
@@ -41,7 +41,7 @@ defmodule QuaycloakAuth.Controller do
 
       def logout(conn, _params) do
         callbacks = QuaycloakAuth.callbacks(conn)
-        conn = callbacks.on_logout(conn)
+        conn = callbacks.logout(conn)
         redirect(conn, to: QuaycloakAuth.routes(conn).after_logout_path)
       end
     end
