@@ -12,7 +12,7 @@ defmodule QuaycloakAuth.Controller do
 
       def login(
             %{assigns: %{ueberauth_failure: %Ueberauth.Failure{errors: errors}}} = conn,
-            _params
+            %{"app_name" => app_name} = _params
           ) do
         message = errors |> Enum.map(& &1.message) |> Enum.join(", ")
 
@@ -25,36 +25,36 @@ defmodule QuaycloakAuth.Controller do
 
         conn
         |> put_flash(:error, "Authentication Failed REASON: #{message}")
-        |> redirect(to: QuaycloakAuth.routes(conn).login_path)
+        |> redirect(to: QuaycloakAuth.routes(app_name).login_path)
       end
 
-      def login(%{assigns: %{ueberauth_auth: auth}} = conn, _params) do
-        callbacks = QuaycloakAuth.callbacks(conn)
+      def login(%{assigns: %{ueberauth_auth: auth}} = conn, %{"app_name" => app_name}) do
+        callbacks = QuaycloakAuth.callbacks(app_name)
 
         """
         OAUTH SUCCESS
 
-        AUTHENTICATION SUCCESSFUL....
+        AUTHENTICATION SUCCESSFUL...
         """
         |> Logger.debug()
 
         with {:ok, user_info, raw_info} <- QuaycloakAuth.Ueberauth.extract(auth),
              {:ok, conn} <- callbacks.login(conn, user_info, raw_info) do
-          redirect(conn, to: QuaycloakAuth.routes(conn).redirect_uri)
+          redirect(conn, to: QuaycloakAuth.routes(app_name).redirect_uri)
         else
           {:error, reason} ->
             Logger.warning("Login failed with REASON:: #{inspect(reason)}")
 
             conn
             |> put_flash(:error, "Login Failed")
-            |> redirect(to: QuaycloakAuth.routes(conn).login_path)
+            |> redirect(to: QuaycloakAuth.routes(app_name).login_path)
         end
       end
 
-      def logout(conn) do
+      def logout(conn, %{"app_name" => app_name}) do
         conn
-        |> QuaycloakAuth.callbacks().logout()
-        |> redirect(to: QuaycloakAuth.routes(conn).logout_path)
+        |> QuaycloakAuth.callbacks(app_name).logout()
+        |> redirect(to: QuaycloakAuth.routes(app_name).logout_path)
       end
     end
   end
