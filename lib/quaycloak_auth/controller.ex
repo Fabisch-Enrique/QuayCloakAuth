@@ -1,76 +1,80 @@
 defmodule QuaycloakAuth.Controller do
   @moduledoc false
 
-  use Phoenix.Controller, formats: [:html]
-
-  require Logger
-
   defmacro __using__(opts) do
-    app_name = Keyword.fetch!(opts, :otp_app)
+    otp_app = Keyword.fetch!(opts, :otp_app)
 
     quote do
-      # Keep action signatures normal: (conn, params)
-      def request(conn, params),
-        do: request(conn, params, unquote(app_name))
+      use Phoenix.Controller, formats: [:html]
+      require Logger
 
-      def login(conn, params), do: login(conn, params, unquote(app_name))
+      # Inject app_name once, so callers don't have to
+      def request(conn, params) do
+        params = Map.put(params || %{}, "app_name", unquote(otp_app))
+        conn
+      end
 
-      def logout(conn, params),
-        do: logout(conn, params, unquote(app_name))
-    end
-  end
+      def login(
+            %{assigns: %{ueberauth_failure: %Ueberauth.Failure{errors: errors}}} = conn,
+            params
+          ) do
+        params = Map.put(params || %{}, "app_name", unquote(otp_app))
+        app_name = Map.fetch!(params, "app_name")
+        message = errors |> Enum.map(& &1.message) |> Enum.join(", ")
 
-  def request(conn, _params, _app_name), do: conn
+        Logger.warning("""
+        OAUTH FAILURE
 
-  def login(
-        %{assigns: %{ueberauth_failure: %Ueberauth.Failure{errors: errors}}} = conn,
-        _params,
-        app_name
-      ) do
-    message = errors |> Enum.map(& &1.message) |> Enum.join(", ")
+        AUTHENTICATION FAILED with REASON:: #{message}
+        """)
 
-    Logger.warning("""
-    OAUTH FAILURE
+        conn
+        |> put_flash(:error, "Authentication Failed REASON: #{message}")
+        |> redirect(to: QuaycloakAuth.routes(app_name).login_path)
+      end
 
-    AUTHENTICATION FAILED with REASON:: #{message} for #{app_name} APP
-    """)
+      def login(%{assigns: %{ueberauth_auth: auth}} = conn, params) do
+        params = Map.put(params || %{}, "app_name", unquote(otp_app))
 
-    conn
-    |> put_flash(:error, "Authentication Failed REASON: #{message}")
-    |> redirect(to: QuaycloakAuth.routes(app_name).login_path)
-  end
+        app_name = Map.fetch!(params, "app_name")
+        callbacks = QuaycloakAuth.callbacks(app_name)
 
-  def login(%{assigns: %{ueberauth_auth: auth}} = conn, _params, app_name) do
-    callbacks = QuaycloakAuth.callbacks(app_name)
+        Logger.debug("""
+        OAUTH SUCCESS
 
-    Logger.debug("""
-    OAUTH SUCCESS
+        AUTHENTICATION SUCCESSFUL...
+        """)
 
-    AUTHENTICATION SUCCESSFUL...
-    """)
+        with {:ok, user_info, raw_info} <- QuaycloakAuth.Ueberauth.extract(auth),
+             {:ok, conn} <- callbacks.login(conn, user_info, raw_info) do
+          redirect(conn, to: QuaycloakAuth.routes(app_name).redirect_uri)
+        else
+          {:error, reason} ->
+            Logger.warning("Login failed with REASON:: #{inspect(reason)}")
 
-    with {:ok, user_info, raw_info} <- QuaycloakAuth.Ueberauth.extract(auth),
-         {:ok, conn} <- callbacks.login(conn, user_info, raw_info) do
-      redirect(conn, to: QuaycloakAuth.routes(app_name).redirect_uri)
-    else
-      {:error, reason} ->
-        Logger.warning("Login failed with REASON:: #{inspect(reason)}")
+            conn
+            |> put_flash(:error, "Login Failed")
+            |> redirect(to: QuaycloakAuth.routes(app_name).login_path)
+        end
+      end
+
+      def login(conn, params) do
+        params = Map.put(params || %{}, "app_name", unquote(otp_app))
+        app_name = Map.fetch!(params, "app_name")
 
         conn
         |> put_flash(:error, "Login Failed")
         |> redirect(to: QuaycloakAuth.routes(app_name).login_path)
+      end
+
+      def logout(conn, params) do
+        params = Map.put(params || %{}, "app_name", unquote(otp_app))
+        app_name = Map.fetch!(params, "app_name")
+
+        conn
+        |> QuaycloakAuth.callbacks(app_name).logout()
+        |> redirect(to: QuaycloakAuth.routes(app_name).logout_path)
+      end
     end
-  end
-
-  def login(conn, _params, app_name) do
-    conn
-    |> put_flash(:error, "Login Failed")
-    |> redirect(to: QuaycloakAuth.routes(app_name).login_path)
-  end
-
-  def logout(conn, _params, app_name) do
-    conn
-    |> QuaycloakAuth.callbacks(app_name).logout()
-    |> redirect(to: QuaycloakAuth.routes(app_name).logout_path)
   end
 end
