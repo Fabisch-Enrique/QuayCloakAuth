@@ -7,9 +7,6 @@ defmodule QuaycloakAuth.Controller do
       use Phoenix.Controller, formats: [:html]
       require Logger
 
-      # IMPORTANT: this is compiled in the HOST APP, not the library
-      plug(Ueberauth)
-
       def request(conn, _params), do: conn
 
       def login(
