@@ -3,10 +3,8 @@ defmodule QuaycloakAuth.Config do
 
   @required_keys [
     :realm,
-    :base_url,
-    :token_url,
+    :routes,
     :client_id,
-    :redirect_uri,
     :client_secret
   ]
 
@@ -22,11 +20,15 @@ defmodule QuaycloakAuth.Config do
 
           config #{inspect(app_name)}, QuaycloakAuth,
 
-          realm: "my_realm",
-          client_id: "admin-cli",
+          realm: "current-realm",
+          client_id: "client-id",
+          client_secret: "client-secret"
           callbacks: HostApp.KeycloakCallbacks,
-          client_secret: "qweRT^%433asdFGH56",
-          base_url: "https://keycloak.example.com"
+          routes: %{
+          base_url: "https://keycloak.example.com",
+          token_url: "https://keycloak.example.com/token",
+          introspect_url: "https://keycloak.example.com/introspect"
+        }
         """
       end
     end)

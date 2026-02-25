@@ -40,19 +40,6 @@ defmodule QuaycloakAuth.Admin.Client do
     end
   end
 
-  def logout(app_name, user_id) do
-    url =
-      "#{config(app_name, :base_url)}/admin/realms/#{config(app_name, :realm)}/users/#{user_id}/logout"
-
-    with {:ok, body} <- get_token(app_name),
-         headers = [
-           {"Authorization", "Bearer #{body.access_token}"}
-         ],
-         {:error, _error} <- request(:post, url, "", headers) do
-      :ok
-    end
-  end
-
   def create_client(app_name, client_id) do
     url =
       config(app_name, :base_url) <> "/admin/realms/" <> config(app_name, :realm) <> "/clients"
@@ -80,7 +67,7 @@ defmodule QuaycloakAuth.Admin.Client do
     end
   end
 
-  # --------------------- Private/Helper Functions -------------------------- #
+  # -------------------------------- Private/Helper Functions ------------------------------------ #
 
   defp fetch_client_secret(app_name, internal_id, headers) do
     url =
@@ -111,14 +98,15 @@ defmodule QuaycloakAuth.Admin.Client do
   defp check_config_keys_exist(config, app_name, key) do
     cond do
       is_list(config) ->
-        if Keyword.has_key?(config, key) do
-          config
-        else
-          raise "#{inspect(key)} missing from config :ueberauth, Ueberauth.Strategy.Keycloak for #{inspect(app_name)}"
-        end
+        if Keyword.has_key?(config, key),
+          do: config,
+          else:
+            raise(
+              "#{inspect(key)} missing from config :app_name, QuaycloakAuth for APP:: #{inspect(app_name)}"
+            )
 
       true ->
-        raise "Config :ueberauth, Ueberauth.Strategy.Keycloak for #{inspect(app_name)} is not a keyword list, as expected"
+        raise "Config :app_name, QuaycloakAuth for APP:: #{inspect(app_name)} is not a keyword list, as expected"
     end
   end
 end

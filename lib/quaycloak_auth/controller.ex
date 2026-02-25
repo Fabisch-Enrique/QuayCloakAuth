@@ -5,6 +5,7 @@ defmodule QuaycloakAuth.Controller do
   defmacro __using__(_opts) do
     quote do
       use Phoenix.Controller, formats: [:html]
+
       require Logger
 
       def request(conn, _params), do: conn
@@ -18,7 +19,7 @@ defmodule QuaycloakAuth.Controller do
         """
         OAUTH FAILURE
 
-        AUTHENTICATION FAILED REASON:: #{message}
+        AUTHENTICATION FAILED with REASON:: #{message}
         """
         |> Logger.warning()
 
@@ -30,12 +31,19 @@ defmodule QuaycloakAuth.Controller do
       def login(%{assigns: %{ueberauth_auth: auth}} = conn, _params) do
         callbacks = QuaycloakAuth.callbacks(conn)
 
+        """
+        OAUTH SUCCESS
+
+        AUTHENTICATION SUCCESSFUL....
+        """
+        |> Logger.debug()
+
         with {:ok, user_info, raw_info} <- QuaycloakAuth.Ueberauth.extract(auth),
              {:ok, conn} <- callbacks.login(conn, user_info, raw_info) do
-          redirect(conn, to: QuaycloakAuth.routes(conn).after_login_path)
+          redirect(conn, to: QuaycloakAuth.routes(conn).redirect_uri)
         else
           {:error, reason} ->
-            Logger.warning("Keycloak login failed: #{inspect(reason)}")
+            Logger.warning("Login failed with REASON:: #{inspect(reason)}")
 
             conn
             |> put_flash(:error, "Login Failed")
@@ -43,10 +51,10 @@ defmodule QuaycloakAuth.Controller do
         end
       end
 
-      def logout(conn, _params) do
-        callbacks = QuaycloakAuth.callbacks(conn)
-        conn = callbacks.logout(conn)
-        redirect(conn, to: QuaycloakAuth.routes(conn).after_logout_path)
+      def logout(conn) do
+        conn
+        |> QuaycloakAuth.callbacks().logout()
+        |> redirect(to: QuaycloakAuth.routes(conn).logout_path)
       end
     end
   end

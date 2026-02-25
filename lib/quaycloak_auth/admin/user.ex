@@ -25,8 +25,8 @@ defmodule QuaycloakAuth.Admin.User do
       }
       |> Jason.encode!()
 
-    url = "#{config(:base_url)}/admin/realms/#{config(:realm)}/users"
     opts = %{client_id: "locus", redirect_uri: "https://locus.evisa.go.ke"}
+    url = "#{config(app_name, :base_url)}/admin/realms/#{config(app_name, :realm)}/users"
 
     with {:ok, token_body} <- Client.get_token(app_name),
          headers = [
@@ -43,7 +43,7 @@ defmodule QuaycloakAuth.Admin.User do
       Logger.warning("""
       User Created Successfully.
 
-      Update Password email has been sent.
+      Update Password email has been sent...
       """)
 
       {:ok, user_id}
@@ -124,18 +124,6 @@ defmodule QuaycloakAuth.Admin.User do
     end
   end
 
-  def list_groups(app_name) do
-    url = config(app_name, :base_url) <> "/admin/realms/" <> config(app_name, :realm) <> "/groups"
-
-    with {:ok, body} <- Client.get_token(app_name),
-         headers = [
-           {"Authorization", "Bearer #{body.access_token}"}
-         ],
-         {:ok, %{status: 200, body: body}} <- request(:get, url, "", headers) do
-      {:ok, Enum.map(body, &{&1.name, &1.id})}
-    end
-  end
-
   def get_user_info(app_name, user_id) do
     url =
       "#{config(app_name, :base_url)}/admin/realms/#{config(app_name, :realm)}/users/#{user_id}"
@@ -195,7 +183,32 @@ defmodule QuaycloakAuth.Admin.User do
     end
   end
 
-  # --------------------- Private/Helper Functions -------------------------- #
+  def logout(app_name, user_id) do
+    url =
+      "#{config(app_name, :base_url)}/admin/realms/#{config(app_name, :realm)}/users/#{user_id}/logout"
+
+    with {:ok, body} <- Client.get_token(app_name),
+         headers = [
+           {"Authorization", "Bearer #{body.access_token}"}
+         ],
+         {:error, _error} <- request(:post, url, "", headers) do
+      :ok
+    end
+  end
+
+  def list_groups(app_name) do
+    url = config(app_name, :base_url) <> "/admin/realms/" <> config(app_name, :realm) <> "/groups"
+
+    with {:ok, body} <- Client.get_token(app_name),
+         headers = [
+           {"Authorization", "Bearer #{body.access_token}"}
+         ],
+         {:ok, %{status: 200, body: body}} <- request(:get, url, "", headers) do
+      {:ok, Enum.map(body, &{&1.name, &1.id})}
+    end
+  end
+
+  # ------------------------------------ Private/Helper Functions ------------------------------------------- #
 
   defp execute_actions(app_name, user_id, actions, opts) when is_list(actions) do
     url =
@@ -244,14 +257,15 @@ defmodule QuaycloakAuth.Admin.User do
   defp check_config_keys_exist(config, app_name, key) do
     cond do
       is_list(config) ->
-        if Keyword.has_key?(config, key) do
-          config
-        else
-          raise "#{inspect(key)} missing from config :ueberauth, Ueberauth.Strategy.Keycloak for #{inspect(app_name)}"
-        end
+        if Keyword.has_key?(config, key),
+          do: config,
+          else:
+            raise(
+              "#{inspect(key)} missing from config :app_name, QuaycloakAuth for APP:: #{inspect(app_name)}"
+            )
 
       true ->
-        raise "Config :ueberauth, Ueberauth.Strategy.Keycloak for #{inspect(app_name)} is not a keyword list, as expected"
+        raise "Config :app_name, QuaycloakAuth for APP:: #{inspect(app_name)} is not a keyword list, as expected"
     end
   end
 
