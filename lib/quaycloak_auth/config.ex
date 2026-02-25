@@ -10,17 +10,17 @@ defmodule QuaycloakAuth.Config do
     :client_secret
   ]
 
-  def fetch!(otp_app) when is_atom(otp_app) do
-    cfg = Application.fetch_env!(otp_app, QuaycloakAuth)
+  def fetch!(app_name) when is_atom(app_name) do
+    cfg = Application.fetch_env!(app_name, QuaycloakAuth)
 
     Enum.each(@required_keys, fn k ->
       if Keyword.has_key?(cfg, k) == false do
         raise """
-        Missing QuaycloakAuth config key #{inspect(k)} for otp_app #{inspect(otp_app)}.
+        Missing QuaycloakAuth config key #{inspect(k)} for app_name #{inspect(app_name)}.
 
         Example:
 
-          config #{inspect(otp_app)}, QuaycloakAuth,
+          config #{inspect(app_name)}, QuaycloakAuth,
 
           realm: "my_realm",
           client_id: "admin-cli",

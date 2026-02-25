@@ -7,16 +7,12 @@ defmodule QuaycloakAuth.Admin.User do
 
   @required_actions ["UPDATE_PASSWORD"]
 
-  def config(),
-    do:
-      :ueberauth
-      |> Application.get_env(QuaycloakAuth)
-      |> check_config_keys_exist(:client_id)
-      |> check_config_keys_exist(:client_secret)
+  def config(app_name), do: QuaycloakAuth.config(app_name)
 
-  def config(key), do: config() |> Keyword.get(key)
+  def config(app_name, key),
+    do: config(app_name) |> check_config_keys_exist(app_name, key) |> Keyword.get(key)
 
-  def create_user_and_send_email_actions(attrs)
+  def create_user_and_send_email_actions(app_name, attrs)
       when is_map(attrs) do
     payload =
       %{
@@ -32,7 +28,7 @@ defmodule QuaycloakAuth.Admin.User do
     url = "#{config(:base_url)}/admin/realms/#{config(:realm)}/users"
     opts = %{client_id: "locus", redirect_uri: "https://locus.evisa.go.ke"}
 
-    with {:ok, token_body} <- Client.get_token(),
+    with {:ok, token_body} <- Client.get_token(app_name),
          headers = [
            {"Authorization", "Bearer #{token_body.access_token}"},
            {"Content-Type", "application/json"}
@@ -93,25 +89,26 @@ defmodule QuaycloakAuth.Admin.User do
     end
   end
 
-  def send_verify_email(user_id, opts \\ %{}),
-    do: execute_actions(user_id, ["VERIFY_EMAIL"], opts)
+  def send_verify_email(app_name, user_id, opts \\ %{}),
+    do: execute_actions(app_name, user_id, ["VERIFY_EMAIL"], opts)
 
-  def send_update_password_email(user_id, opts \\ %{}),
-    do: execute_actions(user_id, ["UPDATE_PASSWORD"], opts)
+  def send_update_password_email(app_name, user_id, opts \\ %{}),
+    do: execute_actions(app_name, user_id, ["UPDATE_PASSWORD"], opts)
 
-  @spec send_webauthn_register_email(any()) :: :ok | {:error, any()}
-  def send_webauthn_register_email(user_id, opts \\ %{}),
-    do: execute_actions(user_id, ["WEBAUTHN_REGISTER"], opts)
+  def send_webauthn_register_email(app_name, user_id, opts \\ %{}),
+    do: execute_actions(app_name, user_id, ["WEBAUTHN_REGISTER"], opts)
 
-  def update_user(user_id, attrs) do
+  def update_user(app_name, user_id, attrs) do
     payload =
       attrs
       |> to_keycloak_user()
       |> Jason.encode!()
 
-    url = config(:base_url) <> "/admin/realms/" <> config(:realm) <> "/users/" <> user_id
+    url =
+      config(app_name, :base_url) <>
+        "/admin/realms/" <> config(app_name, :realm) <> "/users/" <> user_id
 
-    with {:ok, body} <- Client.get_token(),
+    with {:ok, body} <- Client.get_token(app_name),
          headers = [
            {"Authorization", "Bearer #{body.access_token}"},
            {"Content-Type", "application/json"}
@@ -127,10 +124,10 @@ defmodule QuaycloakAuth.Admin.User do
     end
   end
 
-  def list_groups() do
-    url = config(:base_url) <> "/admin/realms/" <> config(:realm) <> "/groups"
+  def list_groups(app_name) do
+    url = config(app_name, :base_url) <> "/admin/realms/" <> config(app_name, :realm) <> "/groups"
 
-    with {:ok, body} <- Client.get_token(),
+    with {:ok, body} <- Client.get_token(app_name),
          headers = [
            {"Authorization", "Bearer #{body.access_token}"}
          ],
@@ -139,11 +136,11 @@ defmodule QuaycloakAuth.Admin.User do
     end
   end
 
-  def get_user_info(user_id) do
+  def get_user_info(app_name, user_id) do
     url =
-      "#{config(:base_url)}/admin/realms/#{config(:realm)}/users/#{user_id}"
+      "#{config(app_name, :base_url)}/admin/realms/#{config(app_name, :realm)}/users/#{user_id}"
 
-    with {:ok, body} <- Client.get_token(),
+    with {:ok, body} <- Client.get_token(app_name),
          headers = [
            {"Authorization", "Bearer #{body.access_token}"}
          ],
@@ -162,10 +159,11 @@ defmodule QuaycloakAuth.Admin.User do
     end
   end
 
-  def get_user_groups(user_id) do
-    url = "#{config(:base_url)}/admin/realms/#{config(:realm)}/users/#{user_id}/groups"
+  def get_user_groups(app_name, user_id) do
+    url =
+      "#{config(app_name, :base_url)}/admin/realms/#{config(app_name, :realm)}/users/#{user_id}/groups"
 
-    with {:ok, body} <- Client.get_token(),
+    with {:ok, body} <- Client.get_token(app_name),
          headers = [
            {"Authorization", "Bearer #{body.access_token}"}
          ],
@@ -174,11 +172,14 @@ defmodule QuaycloakAuth.Admin.User do
     end
   end
 
-  def set_user_enabled(user_id, enabled) do
-    url = config(:base_url) <> "/admin/realms/" <> config(:realm) <> "/users/" <> user_id
+  def set_user_enabled(app_name, user_id, enabled) do
+    url =
+      config(app_name, :base_url) <>
+        "/admin/realms/" <> config(app_name, :realm) <> "/users/" <> user_id
+
     payload = %{enabled: enabled}
 
-    with {:ok, body} <- Client.get_token(),
+    with {:ok, body} <- Client.get_token(app_name),
          headers = [
            {"Authorization", "Bearer #{body.access_token}"},
            {"Content-Type", "application/json"}
@@ -196,12 +197,12 @@ defmodule QuaycloakAuth.Admin.User do
 
   # --------------------- Private/Helper Functions -------------------------- #
 
-  defp execute_actions(user_id, actions, opts) when is_list(actions) do
+  defp execute_actions(app_name, user_id, actions, opts) when is_list(actions) do
     url =
-      "#{config(:base_url)}/admin/realms/#{config(:realm)}/users/#{user_id}/execute-actions-email" <>
+      "#{config(app_name, :base_url)}/admin/realms/#{config(app_name, :realm)}/users/#{user_id}/execute-actions-email" <>
         maybe_build_execute_actions_query(opts)
 
-    with {:ok, body} <- Client.get_token(),
+    with {:ok, body} <- Client.get_token(app_name),
          headers = [
            {"Authorization", "Bearer #{body.access_token}"},
            {"Content-Type", "application/json"}
@@ -240,16 +241,17 @@ defmodule QuaycloakAuth.Admin.User do
     end
   end
 
-  defp check_config_keys_exist(config, key) do
+  defp check_config_keys_exist(config, app_name, key) do
     cond do
-      is_list(config) and Keyword.has_key?(config, key) ->
-        config
-
-      is_list(config()) ->
-        raise "#{inspect(config(key))} missing from config :ueberauth, Ueberauth.Strategy.Keycloak"
+      is_list(config) ->
+        if Keyword.has_key?(config, key) do
+          config
+        else
+          raise "#{inspect(key)} missing from config :ueberauth, Ueberauth.Strategy.Keycloak for #{inspect(app_name)}"
+        end
 
       true ->
-        raise "Config :ueberauth, Ueberauth.Strategy.Keycloak is not a keyword list, as expected"
+        raise "Config :ueberauth, Ueberauth.Strategy.Keycloak for #{inspect(app_name)} is not a keyword list, as expected"
     end
   end
 

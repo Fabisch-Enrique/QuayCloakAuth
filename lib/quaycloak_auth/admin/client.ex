@@ -5,24 +5,19 @@ defmodule QuaycloakAuth.Admin.Client do
 
   @headers [{"Content-Type", "application/x-www-form-urlencoded"}]
 
-  def config(),
-    do:
-      :ueberauth
-      |> Application.get_env(QuaycloakAuth)
-      |> check_config_keys_exist(:client_id)
-      |> check_config_keys_exist(:client_secret)
+  def config(app_name), do: QuaycloakAuth.config(app_name)
 
-  @spec config(atom()) :: any()
-  def config(key), do: config() |> Keyword.get(key)
+  def config(app_name, key),
+    do: config(app_name) |> check_config_keys_exist(app_name, key) |> Keyword.get(key)
 
-  def get_token() do
-    url = config(:token_url)
+  def get_token(app_name) do
+    url = config(app_name, :token_url)
 
     body =
       URI.encode_query(%{
-        client_id: config(:client_id),
+        client_id: config(app_name, :client_id),
         grant_type: "client_credentials",
-        client_secret: config(:client_secret)
+        client_secret: config(app_name, :client_secret)
       })
 
     with {:ok, %{status: 200, body: body}} <- request(:post, url, body, @headers) do
@@ -30,14 +25,14 @@ defmodule QuaycloakAuth.Admin.Client do
     end
   end
 
-  def introspect_token(token) do
+  def introspect_token(app_name, token) do
     url = config(:introspect_url)
 
     body =
       URI.encode_query(%{
         token: token,
-        client_id: config(:client_id),
-        client_secret: config(:client_secret)
+        client_id: config(app_name, :client_id),
+        client_secret: config(app_name, :client_secret)
       })
 
     with {:ok, %{status: 200, body: body}} <- request(:post, url, body, @headers) do
@@ -45,10 +40,11 @@ defmodule QuaycloakAuth.Admin.Client do
     end
   end
 
-  def logout(user_id) do
-    url = "#{config(:base_url)}/admin/realms/#{config(:realm)}/users/#{user_id}/logout"
+  def logout(app_name, user_id) do
+    url =
+      "#{config(app_name, :base_url)}/admin/realms/#{config(app_name, :realm)}/users/#{user_id}/logout"
 
-    with {:ok, body} <- get_token(),
+    with {:ok, body} <- get_token(app_name),
          headers = [
            {"Authorization", "Bearer #{body.access_token}"}
          ],
@@ -57,8 +53,9 @@ defmodule QuaycloakAuth.Admin.Client do
     end
   end
 
-  def create_client(client_id) do
-    url = config(:base_url) <> "/admin/realms/" <> config(:realm) <> "/clients"
+  def create_client(app_name, client_id) do
+    url =
+      config(app_name, :base_url) <> "/admin/realms/" <> config(app_name, :realm) <> "/clients"
 
     payload = %{
       "enabled" => true,
@@ -70,35 +67,37 @@ defmodule QuaycloakAuth.Admin.Client do
       "directAccessGrantsEnabled" => false
     }
 
-    with {:ok, body} <- get_token(),
+    with {:ok, body} <- get_token(app_name),
          headers = [
            {"Authorization", "Bearer #{body.access_token}"},
            {"Content-Type", "application/json"}
          ],
          {:ok, %{status: status} = resp} when status in [201, 204] <-
            request(:post, url, Jason.encode!(payload), headers),
-         {:ok, body} <- extract_created_client_internal_id(resp, client_id, headers),
-         {:ok, body} <- fetch_client_secret(hd(Enum.map(body.body, & &1.id)), headers) do
+         {:ok, body} <- extract_created_client_internal_id(resp, app_name, client_id, headers),
+         {:ok, body} <- fetch_client_secret(app_name, hd(Enum.map(body.body, & &1.id)), headers) do
       {:ok, %{client_id: client_id, client_secret: body.body.value}}
     end
   end
 
   # --------------------- Private/Helper Functions -------------------------- #
 
-  defp fetch_client_secret(internal_id, headers) do
+  defp fetch_client_secret(app_name, internal_id, headers) do
     url =
-      config(:base_url) <>
-        "/admin/realms/" <> config(:realm) <> "/clients/" <> internal_id <> "/client-secret"
+      config(app_name, :base_url) <>
+        "/admin/realms/" <>
+        config(app_name, :realm) <> "/clients/" <> internal_id <> "/client-secret"
 
     with {:ok, %{status: 200, body: %{"value" => secret}}} <- request(:get, url, "", headers) do
       {:ok, secret}
     end
   end
 
-  defp extract_created_client_internal_id(_resp, client_id, headers) do
+  defp extract_created_client_internal_id(_resp, app_name, client_id, headers) do
     url =
-      config(:base_url) <>
-        "/admin/realms/" <> config(:realm) <> "/clients?clientId=" <> URI.encode(client_id)
+      config(app_name, :base_url) <>
+        "/admin/realms/" <>
+        config(app_name, :realm) <> "/clients?clientId=" <> URI.encode(client_id)
 
     with {:ok, %{status: 200, body: [%{"id" => internal_id} | _]}} <-
            request(:get, url, "", headers) do
@@ -109,16 +108,17 @@ defmodule QuaycloakAuth.Admin.Client do
     end
   end
 
-  defp check_config_keys_exist(config, key) do
+  defp check_config_keys_exist(config, app_name, key) do
     cond do
-      is_list(config) and Keyword.has_key?(config, key) ->
-        config
-
-      is_list(config()) ->
-        raise "#{inspect(config(key))} missing from config :ueberauth, Ueberauth.Strategy.Keycloak"
+      is_list(config) ->
+        if Keyword.has_key?(config, key) do
+          config
+        else
+          raise "#{inspect(key)} missing from config :ueberauth, Ueberauth.Strategy.Keycloak for #{inspect(app_name)}"
+        end
 
       true ->
-        raise "Config :ueberauth, Ueberauth.Strategy.Keycloak is not a keyword list, as expected"
+        raise "Config :ueberauth, Ueberauth.Strategy.Keycloak for #{inspect(app_name)} is not a keyword list, as expected"
     end
   end
 end
