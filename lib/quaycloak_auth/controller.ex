@@ -6,6 +6,7 @@ defmodule QuaycloakAuth.Controller do
 
     quote do
       use Phoenix.Controller, formats: [:html]
+
       require Logger
 
       # Inject app_name once, so callers don't have to
@@ -19,6 +20,7 @@ defmodule QuaycloakAuth.Controller do
             params
           ) do
         params = Map.put(params || %{}, "app_name", unquote(otp_app))
+
         app_name = Map.fetch!(params, "app_name")
         message = errors |> Enum.map(& &1.message) |> Enum.join(", ")
 
@@ -30,7 +32,7 @@ defmodule QuaycloakAuth.Controller do
 
         conn
         |> put_flash(:error, "Authentication Failed REASON: #{message}")
-        |> redirect(to: QuaycloakAuth.routes(app_name).login_path)
+        |> redirect(to: QuaycloakAuth.routes(app_name).redirect_uri)
       end
 
       def login(%{assigns: %{ueberauth_auth: auth}} = conn, params) do
@@ -54,7 +56,7 @@ defmodule QuaycloakAuth.Controller do
 
             conn
             |> put_flash(:error, "Login Failed")
-            |> redirect(to: QuaycloakAuth.routes(app_name).login_path)
+            |> redirect(to: QuaycloakAuth.routes(app_name).redirect_uri)
         end
       end
 
@@ -64,7 +66,7 @@ defmodule QuaycloakAuth.Controller do
 
         conn
         |> put_flash(:error, "Login Failed")
-        |> redirect(to: QuaycloakAuth.routes(app_name).login_path)
+        |> redirect(to: QuaycloakAuth.routes(app_name).redirect_uri)
       end
 
       def logout(conn, params) do
