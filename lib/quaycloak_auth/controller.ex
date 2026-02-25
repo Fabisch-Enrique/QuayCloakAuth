@@ -18,7 +18,12 @@ defmodule QuaycloakAuth.Controller do
           ) do
         message = errors |> Enum.map(& &1.message) |> Enum.join(", ")
 
-        Logger.warning("ERROR MESSAGE: #{message}")
+        """
+        OAUTH FAILURE
+
+        AUTHENTICATION FAILED REASON:: #{message}
+        """
+        |> Logger.warning()
 
         conn
         |> put_flash(:error, "Authentication Failed REASON: #{message}")

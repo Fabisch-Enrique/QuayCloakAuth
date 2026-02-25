@@ -13,7 +13,7 @@ defmodule QuaycloakAuth do
     |> Keyword.get(:routes, %{})
     |> Map.new()
     |> Map.merge(%{
-      login_path: "/auth/login",
+      login_path: "/",
       after_login_path: "/",
       after_logout_path: "/"
     })
