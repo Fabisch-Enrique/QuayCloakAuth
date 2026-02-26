@@ -104,6 +104,33 @@ defmodule QuaycloakAuth.Admin.User do
     end
   end
 
+  def add_user_to_groups(app_name, user_id, group_ids)
+      when is_binary(user_id) and is_list(group_ids) do
+    group_ids
+    |> Enum.uniq()
+    |> Enum.reduce_while(:ok, fn group_id, :ok ->
+      url =
+        "#{config(app_name, :routes).base_url}/admin/realms/#{config(app_name, :realm)}/users/#{user_id}/groups/#{group_id}"
+
+      result =
+        with {:ok, token_body} <- Client.get_token(app_name),
+             headers = [{"Authorization", "Bearer #{token_body.access_token}"}],
+             {:ok, %{status: status}} <- request(:put, url, "", headers),
+             true <- status in [204] do
+          :ok
+        else
+          false -> {:error, :unexpected_status}
+          {:ok, %{status: status, body: body}} -> {:error, {:keycloak_error, status, body}}
+          {:error, reason} -> {:error, reason}
+        end
+
+      case result do
+        :ok -> {:cont, :ok}
+        {:error, reason} -> {:halt, {:error, %{group_id: group_id, reason: reason}}}
+      end
+    end)
+  end
+
   def send_verify_email(app_name, user_id, opts \\ %{}),
     do: execute_actions(app_name, user_id, ["VERIFY_EMAIL"], opts)
 
