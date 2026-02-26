@@ -26,7 +26,7 @@ defmodule QuaycloakAuth.Controller do
         Logger.warning("""
         OAUTH FAILURE
 
-        AUTHENTICATION FAILED with REASON:: #{message}
+        AUTHENTICATION FAILED with REASON: #{message}
         """)
 
         conn
@@ -40,7 +40,7 @@ defmodule QuaycloakAuth.Controller do
         app_name = Map.fetch!(params, "app_name")
         callbacks = QuaycloakAuth.callbacks(app_name)
 
-        Logger.debug("""
+        Logger.warning("""
         OAUTH SUCCESS
 
         AUTHENTICATION SUCCESSFUL...
@@ -51,7 +51,7 @@ defmodule QuaycloakAuth.Controller do
           redirect(conn, to: QuaycloakAuth.routes(app_name).login_path)
         else
           {:error, reason} ->
-            Logger.warning("Login failed with REASON:: #{inspect(reason)}")
+            Logger.warning("Login failed with REASON: #{inspect(reason)}")
 
             conn
             |> put_flash(:error, "Login Failed")

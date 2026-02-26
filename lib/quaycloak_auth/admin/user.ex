@@ -12,6 +12,19 @@ defmodule QuaycloakAuth.Admin.User do
   def config(app_name, key),
     do: config(app_name) |> check_config_keys_exist(app_name, key) |> Keyword.get(key)
 
+  def list_users(app_name) do
+    url = config(app_name, :routes).base_url <> "/admin/realms/" <> config(:realm) <> "/users"
+
+    with {:ok, body} <- Client.get_token(app_name),
+         headers = [
+           {"Authorization", "Bearer #{body.access_token}"}
+         ],
+         {:ok, %{status: 200, body: body}} <- request(:get, url, "", headers),
+         users <- Enum.map(body, &maybe_map_payload/1) do
+      {:ok, users}
+    end
+  end
+
   def create_user_and_send_email_actions(app_name, attrs)
       when is_map(attrs) do
     payload =
@@ -279,5 +292,23 @@ defmodule QuaycloakAuth.Admin.User do
     }
     |> Enum.reject(fn {_k, v} -> is_nil(v) end)
     |> Map.new()
+  end
+
+  defp maybe_map_payload(user) do
+    %{
+      id: user.id || user["id"],
+      email: user.email || user["email"],
+      enabled: user.enabled || user["enabled"],
+      username: user.username || user["username"],
+      first_name: user.firstName || user["firstName"],
+      last_name: user.lastName || user["lastName"],
+      email_verified: user.emailVerified || user["emailVerified"],
+      created_at:
+        user.createdTimestamp
+        |> Timex.from_unix(:milliseconds)
+        |> Timex.Timezone.convert("Africa/Nairobi")
+        |> Timex.format!("{YYYY}-{0M}-{0D}") ||
+          user["createdTimestamp"]
+    }
   end
 end
