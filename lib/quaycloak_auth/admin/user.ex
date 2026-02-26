@@ -13,7 +13,9 @@ defmodule QuaycloakAuth.Admin.User do
     do: config(app_name) |> check_config_keys_exist(app_name, key) |> Keyword.get(key)
 
   def list_users(app_name) do
-    url = config(app_name, :routes).base_url <> "/admin/realms/" <> config(:realm) <> "/users"
+    url =
+      config(app_name, :routes).base_url <>
+        "/admin/realms/" <> config(app_name, :realm) <> "/users"
 
     with {:ok, body} <- Client.get_token(app_name),
          headers = [
