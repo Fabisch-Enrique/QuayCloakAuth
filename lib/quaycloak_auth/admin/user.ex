@@ -34,7 +34,7 @@ defmodule QuaycloakAuth.Admin.User do
            {"Content-Type", "application/json"}
          ],
          {:ok, %{status: 201, body: _body}} <- request(:post, url, payload, headers),
-         {:ok, user_id} <- get_user_id_by_email(attrs.email, token_body.access_token) do
+         {:ok, user_id} <- get_user_id_by_email(app_name, attrs.email, token_body.access_token) do
       Task.start(fn ->
         # send_verify_email(user_id, opts)
         send_update_password_email(user_id, opts)
@@ -62,9 +62,9 @@ defmodule QuaycloakAuth.Admin.User do
     end
   end
 
-  def get_user_id_by_email(email, token) do
+  def get_user_id_by_email(app_name, email, token) do
     url =
-      "#{config(:base_url)}/admin/realms/#{config(:realm)}/users" <>
+      "#{config(app_name, :routes).base_url}/admin/realms/#{config(app_name, :realm)}/users" <>
         "?email=#{URI.encode(email)}&exact=true"
 
     headers = [
@@ -105,7 +105,7 @@ defmodule QuaycloakAuth.Admin.User do
       |> Jason.encode!()
 
     url =
-      config(app_name, :base_url) <>
+      config(app_name, :routes).base_url <>
         "/admin/realms/" <> config(app_name, :realm) <> "/users/" <> user_id
 
     with {:ok, body} <- Client.get_token(app_name),
@@ -126,7 +126,7 @@ defmodule QuaycloakAuth.Admin.User do
 
   def get_user_info(app_name, user_id) do
     url =
-      "#{config(app_name, :base_url)}/admin/realms/#{config(app_name, :realm)}/users/#{user_id}"
+      "#{config(app_name, :routes).base_url}/admin/realms/#{config(app_name, :realm)}/users/#{user_id}"
 
     with {:ok, body} <- Client.get_token(app_name),
          headers = [
@@ -149,7 +149,7 @@ defmodule QuaycloakAuth.Admin.User do
 
   def get_user_groups(app_name, user_id) do
     url =
-      "#{config(app_name, :base_url)}/admin/realms/#{config(app_name, :realm)}/users/#{user_id}/groups"
+      "#{config(app_name, :routes).base_url}/admin/realms/#{config(app_name, :realm)}/users/#{user_id}/groups"
 
     with {:ok, body} <- Client.get_token(app_name),
          headers = [
@@ -162,7 +162,7 @@ defmodule QuaycloakAuth.Admin.User do
 
   def set_user_enabled(app_name, user_id, enabled) do
     url =
-      config(app_name, :base_url) <>
+      config(app_name, :routes).base_url <>
         "/admin/realms/" <> config(app_name, :realm) <> "/users/" <> user_id
 
     payload = %{enabled: enabled}
@@ -185,7 +185,7 @@ defmodule QuaycloakAuth.Admin.User do
 
   def logout(app_name, user_id) do
     url =
-      "#{config(app_name, :base_url)}/admin/realms/#{config(app_name, :realm)}/users/#{user_id}/logout"
+      "#{config(app_name, :routes).base_url}/admin/realms/#{config(app_name, :realm)}/users/#{user_id}/logout"
 
     with {:ok, body} <- Client.get_token(app_name),
          headers = [
@@ -197,7 +197,9 @@ defmodule QuaycloakAuth.Admin.User do
   end
 
   def list_groups(app_name) do
-    url = config(app_name, :base_url) <> "/admin/realms/" <> config(app_name, :realm) <> "/groups"
+    url =
+      config(app_name, :routes).base_url <>
+        "/admin/realms/" <> config(app_name, :realm) <> "/groups"
 
     with {:ok, body} <- Client.get_token(app_name),
          headers = [
@@ -212,7 +214,7 @@ defmodule QuaycloakAuth.Admin.User do
 
   defp execute_actions(app_name, user_id, actions, opts) when is_list(actions) do
     url =
-      "#{config(app_name, :base_url)}/admin/realms/#{config(app_name, :realm)}/users/#{user_id}/execute-actions-email" <>
+      "#{config(app_name, :routes).base_url}/admin/realms/#{config(app_name, :realm)}/users/#{user_id}/execute-actions-email" <>
         maybe_build_execute_actions_query(opts)
 
     with {:ok, body} <- Client.get_token(app_name),
@@ -261,11 +263,11 @@ defmodule QuaycloakAuth.Admin.User do
           do: config,
           else:
             raise(
-              "#{inspect(key)} missing from config :app_name, QuaycloakAuth for APP:: #{inspect(app_name)}"
+              "#{inspect(key)} missing from config #{inspect(app_name)}, QuaycloakAuth for the #{inspect(app_name)} APP"
             )
 
       true ->
-        raise "Config :app_name, QuaycloakAuth for APP:: #{inspect(app_name)} is not a keyword list, as expected"
+        raise "Config #{inspect(app_name)}, QuaycloakAuth for the #{inspect(app_name)} APP is not a keyword list, as expected"
     end
   end
 

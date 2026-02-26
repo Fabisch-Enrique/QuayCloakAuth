@@ -11,7 +11,7 @@ defmodule QuaycloakAuth.Admin.Client do
     do: config(app_name) |> check_config_keys_exist(app_name, key) |> Keyword.get(key)
 
   def get_token(app_name) do
-    url = config(app_name, :token_url)
+    url = config(app_name, :routes).token_url
 
     body =
       URI.encode_query(%{
@@ -26,7 +26,7 @@ defmodule QuaycloakAuth.Admin.Client do
   end
 
   def introspect_token(app_name, token) do
-    url = config(:introspect_url)
+    url = config(app_name, :routes).introspect_url
 
     body =
       URI.encode_query(%{
@@ -42,7 +42,8 @@ defmodule QuaycloakAuth.Admin.Client do
 
   def create_client(app_name, client_id) do
     url =
-      config(app_name, :base_url) <> "/admin/realms/" <> config(app_name, :realm) <> "/clients"
+      config(app_name, :routes).base_url <>
+        "/admin/realms/" <> config(app_name, :realm) <> "/clients"
 
     payload = %{
       "enabled" => true,
@@ -71,7 +72,7 @@ defmodule QuaycloakAuth.Admin.Client do
 
   defp fetch_client_secret(app_name, internal_id, headers) do
     url =
-      config(app_name, :base_url) <>
+      config(app_name, :routes).base_url <>
         "/admin/realms/" <>
         config(app_name, :realm) <> "/clients/" <> internal_id <> "/client-secret"
 
@@ -82,7 +83,7 @@ defmodule QuaycloakAuth.Admin.Client do
 
   defp extract_created_client_internal_id(_resp, app_name, client_id, headers) do
     url =
-      config(app_name, :base_url) <>
+      config(app_name, :routes).base_url <>
         "/admin/realms/" <>
         config(app_name, :realm) <> "/clients?clientId=" <> URI.encode(client_id)
 
@@ -102,11 +103,11 @@ defmodule QuaycloakAuth.Admin.Client do
           do: config,
           else:
             raise(
-              "#{inspect(key)} missing from config :app_name, QuaycloakAuth for APP:: #{inspect(app_name)}"
+              "#{inspect(key)} missing from config #{inspect(app_name)}, QuaycloakAuth for the #{inspect(app_name)} APP"
             )
 
       true ->
-        raise "Config :app_name, QuaycloakAuth for APP:: #{inspect(app_name)} is not a keyword list, as expected"
+        raise "Config #{inspect(app_name)}, QuaycloakAuth for the #{inspect(app_name)} APP is not a keyword list, as expected"
     end
   end
 end
